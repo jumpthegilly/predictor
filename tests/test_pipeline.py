@@ -45,18 +45,10 @@ MOCK_STORED_ROW = {"id": "log-uuid-001", "fighter_id": FIGHTER_ID}
 
 PATCH_NEWS = "src.pipeline.signal_pipeline.fetch_articles"
 PATCH_PROC = "src.pipeline.signal_pipeline.extract_signals"
+PATCH_REDDIT = "src.pipeline.signal_pipeline.fetch_posts"
+PATCH_YOUTUBE = "src.pipeline.signal_pipeline.fetch_videos"
 PATCH_MARKET = "src.pipeline.signal_pipeline.fetch_markets"
 PATCH_STORE = "src.pipeline.signal_pipeline.store_signal_log"
-
-
-def _all_mocks(articles=None, signals=None, markets=None, stored=None):
-    """Return a dict of side_effects for all four patch targets."""
-    return {
-        PATCH_NEWS: MagicMock(return_value=articles if articles is not None else MOCK_ARTICLES),
-        PATCH_PROC: MagicMock(return_value=signals if signals is not None else MOCK_PROCESSED_SIGNALS),
-        PATCH_MARKET: MagicMock(return_value=markets if markets is not None else MOCK_MARKETS),
-        PATCH_STORE: MagicMock(return_value=stored if stored is not None else MOCK_STORED_ROW),
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -67,11 +59,15 @@ def _all_mocks(articles=None, signals=None, markets=None, stored=None):
 class TestSummaryShape:
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_returns_dict(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_returns_dict(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -81,11 +77,15 @@ class TestSummaryShape:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_summary_contains_required_keys(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_summary_contains_required_keys(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -102,11 +102,15 @@ class TestSummaryShape:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_summary_counts_are_correct(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_summary_counts_are_correct(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -120,11 +124,15 @@ class TestSummaryShape:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_no_errors_on_clean_run(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_no_errors_on_clean_run(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -143,11 +151,15 @@ class TestSummaryShape:
 class TestOrchestration:
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_calls_news_harvester_with_fighter_name(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_calls_news_harvester_with_fighter_name(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -157,11 +169,16 @@ class TestOrchestration:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_calls_news_processor_with_articles(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_calls_news_processor_with_articles(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
+        """With no Reddit/YouTube posts, extract_signals is called exactly once for news."""
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -171,11 +188,15 @@ class TestOrchestration:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_calls_market_harvester_with_fighter_name_as_keyword(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_calls_market_harvester_with_fighter_name_as_keyword(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -185,11 +206,15 @@ class TestOrchestration:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_stores_news_signals(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_stores_news_signals(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -200,11 +225,16 @@ class TestOrchestration:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_stores_market_signals(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_stores_market_signals(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
+        """With no Reddit/YouTube, market signals are stored at index 1."""
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -219,12 +249,16 @@ class TestOrchestration:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_store_called_twice_on_clean_run(self, mock_news, mock_proc, mock_market, mock_store):
-        """store_signal_log called once for news, once for market."""
+    def test_store_called_twice_on_news_and_market_only(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
+        """With no Reddit/YouTube, store_signal_log called once for news, once for market."""
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -241,11 +275,15 @@ class TestOrchestration:
 class TestErrorHandling:
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_news_harvester_failure_does_not_crash(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_news_harvester_failure_does_not_crash(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.side_effect = Exception("network error")
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -258,11 +296,15 @@ class TestErrorHandling:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_news_processor_failure_does_not_crash(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_news_processor_failure_does_not_crash(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.side_effect = Exception("parsing failed")
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -274,11 +316,15 @@ class TestErrorHandling:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_market_harvester_failure_does_not_crash(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_market_harvester_failure_does_not_crash(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.side_effect = Exception("API timeout")
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -291,11 +337,15 @@ class TestErrorHandling:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_storage_failure_does_not_crash(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_storage_failure_does_not_crash(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.side_effect = Exception("DB write failed")
 
@@ -307,12 +357,16 @@ class TestErrorHandling:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_multiple_failures_all_recorded_in_errors(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_multiple_failures_all_recorded_in_errors(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         mock_news.side_effect = Exception("news down")
         mock_market.side_effect = Exception("market down")
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_store.return_value = MOCK_STORED_ROW
 
         result = run_signal_pipeline(FIGHTER_NAME, FIGHTER_ID, EVENT_ID)
@@ -321,12 +375,16 @@ class TestErrorHandling:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_empty_articles_skips_processor_and_news_storage(self, mock_news, mock_proc, mock_market, mock_store):
-        """If no articles found, skip processor and news storage — no error recorded."""
+    def test_empty_articles_skips_processor_and_news_storage(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
+        """If no articles found AND no reddit/youtube posts, skip processor — no error recorded."""
         mock_news.return_value = []
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = MOCK_MARKETS
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -338,12 +396,16 @@ class TestErrorHandling:
 
     @patch(PATCH_STORE)
     @patch(PATCH_MARKET)
+    @patch(PATCH_YOUTUBE)
+    @patch(PATCH_REDDIT)
     @patch(PATCH_PROC)
     @patch(PATCH_NEWS)
-    def test_empty_markets_skips_market_storage(self, mock_news, mock_proc, mock_market, mock_store):
+    def test_empty_markets_skips_market_storage(self, mock_news, mock_proc, mock_reddit, mock_yt, mock_market, mock_store):
         """If no markets found, skip market storage — no error recorded."""
         mock_news.return_value = MOCK_ARTICLES
         mock_proc.return_value = MOCK_PROCESSED_SIGNALS
+        mock_reddit.return_value = []
+        mock_yt.return_value = []
         mock_market.return_value = []
         mock_store.return_value = MOCK_STORED_ROW
 
@@ -351,7 +413,7 @@ class TestErrorHandling:
 
         assert result["markets_found"] == 0
         assert result["market_signals_stored"] is False
-        # Store called once for news only
+        # Store called once for news only (reddit/youtube return [])
         assert mock_store.call_count == 1
 
 

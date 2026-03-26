@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from src.harvesters.market_harvester import fetch_markets
 from src.harvesters.news_harvester import fetch_articles
+from src.harvesters.reddit_harvester import fetch_posts
+from src.harvesters.youtube_harvester import fetch_videos
 from src.processors.news_processor import extract_signals
 from src.storage.signal_storage import store_signal_log
 
@@ -45,6 +47,34 @@ def _market_signals(markets: list, fighter_name: str) -> dict:
     }
 
 
+def _posts_to_articles(posts: list) -> list[dict]:
+    """Convert Reddit Post objects to article-compatible dicts for extract_signals."""
+    return [
+        {
+            "title": post.title,
+            "raw_text": f"{post.title}\n{post.body}".strip(),
+            "source": f"r/{post.subreddit}",
+            "url": post.url,
+            "published_date": str(post.created_utc),
+        }
+        for post in posts
+    ]
+
+
+def _videos_to_articles(videos: list) -> list[dict]:
+    """Convert YouTube Video objects to article-compatible dicts for extract_signals."""
+    return [
+        {
+            "title": video.title,
+            "raw_text": f"{video.title}\n{video.description}".strip(),
+            "source": f"YouTube/{video.channel_title}",
+            "url": video.url,
+            "published_date": video.published_at,
+        }
+        for video in videos
+    ]
+
+
 def run_signal_pipeline(
     fighter_name: str,
     fighter_id: str,
@@ -55,10 +85,10 @@ def run_signal_pipeline(
 
     Steps
     -----
-    1. Fetch news articles mentioning the fighter.
-    2. Extract structured signals from those articles.
-    3. Fetch prediction market odds for the fighter.
-    4. Persist news signals and market signals to Supabase.
+    1. Fetch news articles → extract signals → store (source_type='news')
+    2. Fetch Reddit posts → extract signals → store (source_type='reddit')
+    3. Fetch YouTube videos → extract signals → store (source_type='youtube')
+    4. Fetch prediction market odds → store (source_type='market')
 
     Each step is isolated — a failure in one step is recorded in the
     ``errors`` list but does not abort subsequent steps.
@@ -66,7 +96,7 @@ def run_signal_pipeline(
     Parameters
     ----------
     fighter_name:
-        Display name used for news and market filtering, e.g. ``"Jon Jones"``.
+        Display name used for filtering, e.g. ``"Jon Jones"``.
     fighter_id:
         Supabase UUID for the fighter row.
     event_id:
@@ -76,22 +106,27 @@ def run_signal_pipeline(
     -------
     dict
         Summary with keys: fighter_name, fighter_id, event_id,
-        articles_found, markets_found, news_signals_stored,
-        market_signals_stored, errors.
+        articles_found, reddit_posts_found, youtube_videos_found,
+        markets_found, news_signals_stored, reddit_signals_stored,
+        youtube_signals_stored, market_signals_stored, errors.
     """
     summary: dict = {
         "fighter_name": fighter_name,
         "fighter_id": fighter_id,
         "event_id": event_id,
         "articles_found": 0,
+        "reddit_posts_found": 0,
+        "youtube_videos_found": 0,
         "markets_found": 0,
         "news_signals_stored": False,
+        "reddit_signals_stored": False,
+        "youtube_signals_stored": False,
         "market_signals_stored": False,
         "errors": [],
     }
 
     # ------------------------------------------------------------------
-    # Step 1 + 2: News harvest → process → store
+    # Step 1: News harvest → process → store
     # ------------------------------------------------------------------
     articles = []
     try:
@@ -109,7 +144,45 @@ def run_signal_pipeline(
             summary["errors"].append(f"news processor/storage: {exc}")
 
     # ------------------------------------------------------------------
-    # Step 3 + 4: Market harvest → store
+    # Step 2: Reddit harvest → process → store
+    # ------------------------------------------------------------------
+    posts = []
+    try:
+        posts = fetch_posts(fighter_name)
+        summary["reddit_posts_found"] = len(posts)
+    except Exception as exc:
+        summary["errors"].append(f"reddit harvester: {exc}")
+
+    if posts:
+        try:
+            reddit_articles = _posts_to_articles(posts)
+            processed_reddit = extract_signals(reddit_articles, fighter_name)
+            store_signal_log(fighter_id, event_id, "reddit", processed_reddit)
+            summary["reddit_signals_stored"] = True
+        except Exception as exc:
+            summary["errors"].append(f"reddit processor/storage: {exc}")
+
+    # ------------------------------------------------------------------
+    # Step 3: YouTube harvest → process → store
+    # ------------------------------------------------------------------
+    videos = []
+    try:
+        videos = fetch_videos(fighter_name)
+        summary["youtube_videos_found"] = len(videos)
+    except Exception as exc:
+        summary["errors"].append(f"youtube harvester: {exc}")
+
+    if videos:
+        try:
+            yt_articles = _videos_to_articles(videos)
+            processed_yt = extract_signals(yt_articles, fighter_name)
+            store_signal_log(fighter_id, event_id, "youtube", processed_yt)
+            summary["youtube_signals_stored"] = True
+        except Exception as exc:
+            summary["errors"].append(f"youtube processor/storage: {exc}")
+
+    # ------------------------------------------------------------------
+    # Step 4: Market harvest → store
     # ------------------------------------------------------------------
     markets = []
     try:
